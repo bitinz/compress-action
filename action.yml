@@ -1,0 +1,44 @@
+name: Bitinz Image Compression
+description: Compress PNG, JPG and WebP images in your repository with the Bitinz API, and optionally commit the smaller files.
+author: Bitinz
+branding:
+  icon: image
+  color: orange
+inputs:
+  api-key:
+    description: Your Bitinz API key. Store it as a repository secret, e.g. secrets.BITINZ_API_KEY.
+    required: true
+  paths:
+    description: Glob patterns or folders to compress, one per line or comma-separated.
+    default: '**/*.{png,jpg,jpeg,webp}'
+  ignore:
+    description: Glob patterns to leave out.
+    default: ''
+  level:
+    description: fast, default or best. Empty uses your account's default.
+    default: ''
+  changed-only:
+    description: For pull requests and pushes, compress only images they add or change. Other events check every image.
+    default: 'true'
+  min-savings:
+    description: Keep an image as it is when compression saves less than this percentage.
+    default: '2'
+  commit:
+    description: Commit the compressed images back to the branch. Needs "permissions contents write"; skipped for pull requests from forks.
+    default: 'false'
+  commit-message:
+    description: Message of that commit.
+    default: Compress images with Bitinz
+  github-token:
+    description: Token used to list the files a pull request or push changes.
+    default: ${{ github.token }}
+outputs:
+  files:
+    description: Number of images that were compressed.
+  bytes-saved:
+    description: Total bytes saved.
+  markdown:
+    description: A Markdown summary with a table of the compressed images, e.g. for a pull request comment.
+runs:
+  using: node24
+  main: dist/index.mjs

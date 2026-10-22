@@ -1,0 +1,21 @@
+{
+  "name": "bitinz-compress-action",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GitHub Action: compress PNG, JPG and WebP images with the Bitinz API",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.mjs --legal-comments=none --banner:js=\"// Bundled by esbuild from src/; do not edit.\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run typecheck && npm run build && node --test --test-concurrency=1 test/*.test.mjs"
+  },
+  "dependencies": {
+    "bitinz": "file:../bitinz-js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "esbuild": "^0.28.2",
+    "typescript": "~6.0.2"
+  }
+}

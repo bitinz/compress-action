@@ -1,0 +1,19 @@
+# Runs the action on the sample images in examples/ (needs the
+# BITINZ_API_KEY secret). Results are shown in the job summary only.
+name: Example
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: bitinz
+        uses: ./
+        with:
+          api-key: ${{ secrets.BITINZ_API_KEY }}
+          paths: examples
+          changed-only: false
+      - run: echo "Compressed ${{ steps.bitinz.outputs.files }} images, saved ${{ steps.bitinz.outputs.bytes-saved }} bytes"
