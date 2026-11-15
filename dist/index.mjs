@@ -422,6 +422,8 @@ var DEFAULT_PATHS = ["**/*.{png,jpg,jpeg,webp}"];
 var IMAGE = /\.(png|jpe?g|webp|avif)$/i;
 var SKIPPED = /* @__PURE__ */ new Set([".git", "node_modules"]);
 var ZERO_SHA = /^0+$/;
+var FORK_EVENTS = /* @__PURE__ */ new Set(["pull_request", "pull_request_review", "pull_request_review_comment"]);
+var DEPENDABOT_EVENTS = /* @__PURE__ */ new Set(["push", ...FORK_EVENTS]);
 var posix = (path) => path.split(sep).join("/");
 function allImages(root, dir = root, found = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -470,6 +472,23 @@ function table(report, workspace) {
   if (report.compressionCount !== void 0) lines.push("", `<sub>API compressions used this month: ${report.compressionCount}</sub>`);
   return lines.join("\n");
 }
+function withoutSecrets() {
+  const name = process.env.GITHUB_EVENT_NAME ?? "";
+  if (process.env.GITHUB_ACTOR === "dependabot[bot]" && DEPENDABOT_EVENTS.has(name)) return "runs triggered by Dependabot receive only Dependabot secrets";
+  if (FORK_EVENTS.has(name)) {
+    const event = readEvent();
+    if (event?.pull_request && event.pull_request.head.repo?.full_name !== event.repository.full_name) return "pull requests from forks do not receive this repository's secrets";
+  }
+  return void 0;
+}
+function reportNothing(text) {
+  setOutput("files", 0);
+  setOutput("bytes-saved", 0);
+  setOutput("markdown", "");
+  appendSummary(`### Bitinz image compression
+
+${text}`);
+}
 function git(workspace, ...args) {
   return execFileSync("git", ["-C", workspace, ...args], { encoding: "utf8" }).trim();
 }
@@ -500,7 +519,13 @@ function commit(workspace, files, message) {
 }
 async function run() {
   const apiKey = input("api-key");
-  if (!apiKey) throw new Error("The api-key input is required. Add your Bitinz API key as a repository secret and pass it: api-key: ${{ secrets.BITINZ_API_KEY }}");
+  if (!apiKey) {
+    const reason = withoutSecrets();
+    if (!reason) throw new Error("The api-key input is required. Add your Bitinz API key as a repository secret and pass it: api-key: ${{ secrets.BITINZ_API_KEY }}");
+    log.notice(`Skipped: ${reason}, so there is no API key. No images were compressed.`);
+    reportNothing(`Skipped: ${reason}, so there is no API key.`);
+    return;
+  }
   log.mask(apiKey);
   const level = input("level");
   if (level && !["fast", "default", "best"].includes(level)) throw new Error("level must be fast, default or best");
@@ -512,12 +537,7 @@ async function run() {
   const files = listed.filter((path) => IMAGE.test(path) && wanted(path) && !ignored(path) && existsSync2(join2(workspace, path)) && statSync(join2(workspace, path)).isFile());
   log.info(`${files.length} image${files.length === 1 ? "" : "s"} to compress (${scope}).`);
   if (!files.length) {
-    setOutput("files", 0);
-    setOutput("bytes-saved", 0);
-    setOutput("markdown", "");
-    appendSummary(`### Bitinz image compression
-
-No images to compress (${scope}).`);
+    reportNothing(`No images to compress (${scope}).`);
     return;
   }
   const client = new Bitinz({ apiKey, baseUrl: process.env.BITINZ_BASE_URL || void 0 });

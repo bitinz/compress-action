@@ -32,7 +32,9 @@ jobs:
           commit: true
 ```
 
-Checking out `github.head_ref` lets the action push to the pull request's branch. Pull requests from forks cannot be pushed to with the workflow's token; their images are still compressed and reported, but not committed.
+Checking out `github.head_ref` lets the action push to the pull request's branch.
+
+GitHub does not give your repository's secrets to workflows for pull requests from forks, or to runs triggered by Dependabot. Without an API key the action skips them with a notice instead of failing; anywhere else, a missing key fails the step. If a fork's workflow does receive the key, its images are compressed and reported but not committed, because the workflow's token cannot push to a fork.
 
 ### Only report, never commit
 

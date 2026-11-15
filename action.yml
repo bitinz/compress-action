@@ -6,7 +6,7 @@ branding:
   color: orange
 inputs:
   api-key:
-    description: Your Bitinz API key. Store it as a repository secret, e.g. secrets.BITINZ_API_KEY.
+    description: Your Bitinz API key. Store it as a repository secret, e.g. secrets.BITINZ_API_KEY. Pull requests from forks and runs triggered by Dependabot, which receive no secrets, are skipped.
     required: true
   paths:
     description: Glob patterns or folders to compress, one per line or comma-separated.

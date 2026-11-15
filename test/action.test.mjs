@@ -120,6 +120,35 @@ test('pull requests from forks are compressed but not committed; a detached chec
   assert.match(detached.stdout, /::error::To commit to a pull request, check out its branch/)
 })
 
+test('runs that GitHub gives no secrets are skipped with a notice; anywhere else a missing key fails', async t => {
+  const api = await startMockApi()
+  t.after(api.close)
+  const repo = await repository()
+  const env = { BITINZ_BASE_URL: api.url }
+  const pr = owner => ({ pull_request: { number: 8, head: { ref: 'feature', sha: repo.head, repo: owner && { full_name: owner } } }, repository: { full_name: 'acme/site' } })
+  // The workflow passes ${{ secrets.BITINZ_API_KEY }}, which GitHub leaves empty here.
+  for (const [eventName, event, extra, reason] of [
+    ['pull_request', pr('someone/site'), {}, "pull requests from forks do not receive this repository's secrets"],
+    ['pull_request_review', pr(null), {}, "pull requests from forks do not receive this repository's secrets"],
+    ['push', { before: repo.head, after: repo.head, repository: { full_name: 'acme/site' } }, { GITHUB_ACTOR: 'dependabot[bot]' }, 'runs triggered by Dependabot receive only Dependabot secrets'],
+  ]) {
+    const result = await action(repo, { 'api-key': '', commit: 'true' }, { event, eventName, env: { ...env, ...extra } })
+    assert.equal(result.code, 0, result.stdout)
+    assert.ok(result.stdout.includes(`::notice::Skipped: ${reason}, so there is no API key. No images were compressed.`), result.stdout)
+    assert.deepEqual(result.outputs, { files: '0', 'bytes-saved': '0', markdown: '' })
+    assert.equal(result.summary, `### Bitinz image compression\n\nSkipped: ${reason}, so there is no API key.\n`)
+  }
+  // These runs do receive secrets, so an empty key is a mistake in the workflow.
+  for (const [eventName, event, extra] of [['pull_request', pr('acme/site'), {}], ['pull_request_target', pr('someone/site'), {}],
+    ['workflow_dispatch', {}, { GITHUB_ACTOR: 'dependabot[bot]' }]]) {
+    const result = await action(repo, { 'api-key': '' }, { event, eventName, env: { ...env, ...extra } })
+    assert.equal(result.code, 1, eventName)
+    assert.match(result.stdout, /::error::The api-key input is required/)
+  }
+  assert.equal(api.state.requests.length, 0, 'nothing reaches the Bitinz API without a key')
+  assert.equal(git(repo.remote, 'rev-parse', 'feature'), repo.head, 'nothing committed')
+})
+
 test('a used-up quota fails the step; a missing key explains how to add one', async t => {
   const api = await startMockApi({ quota: 0 })
   t.after(api.close)

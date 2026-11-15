@@ -32,7 +32,9 @@ jobs:
           commit: true
 ```
 
-检出 `github.head_ref` 后，Action 才能推送到 PR 的分支。来自 fork 的 PR 无法用工作流的 token 推送：图片照样压缩并列出结果，但不会提交。
+检出 `github.head_ref` 后，Action 才能推送到 PR 的分支。
+
+GitHub 不会把仓库的 secret 交给来自 fork 的 PR 的工作流，也不会交给 Dependabot 触发的运行。没有 API key 时，Action 会跳过这些运行并给出提示，而不是报错；其他情况下缺少 key 仍会让这一步失败。如果 fork 的工作流拿到了 key，图片照样压缩并列出结果，但不会提交，因为工作流的 token 无法推送到 fork。
 
 ### 只报告，不提交
 

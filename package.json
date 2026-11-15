@@ -1,6 +1,6 @@
 {
   "name": "bitinz-compress-action",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "GitHub Action: compress PNG, JPG and WebP images with the Bitinz API",
   "license": "MIT",

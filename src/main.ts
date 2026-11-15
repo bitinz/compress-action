@@ -9,6 +9,10 @@ const DEFAULT_PATHS = ['**/*.{png,jpg,jpeg,webp}']
 const IMAGE = /\.(png|jpe?g|webp|avif)$/i
 const SKIPPED = new Set(['.git', 'node_modules'])
 const ZERO_SHA = /^0+$/
+// Events whose runs get no Actions secrets when they come from a fork or from
+// Dependabot. pull_request_target is not one of them: it runs with secrets.
+const FORK_EVENTS = new Set(['pull_request', 'pull_request_review', 'pull_request_review_comment'])
+const DEPENDABOT_EVENTS = new Set(['push', ...FORK_EVENTS])
 
 const posix = (path: string) => path.split(sep).join('/')
 
@@ -64,6 +68,24 @@ function table(report: BatchReport, workspace: string): string {
   return lines.join('\n')
 }
 
+/** Why GitHub gave this run none of the repository's secrets, if it did not. */
+function withoutSecrets(): string | undefined {
+  const name = process.env.GITHUB_EVENT_NAME ?? ''
+  if (process.env.GITHUB_ACTOR === 'dependabot[bot]' && DEPENDABOT_EVENTS.has(name)) return 'runs triggered by Dependabot receive only Dependabot secrets'
+  if (FORK_EVENTS.has(name)) {
+    const event = readEvent<PullRequestEvent>()
+    if (event?.pull_request && event.pull_request.head.repo?.full_name !== event.repository.full_name) return "pull requests from forks do not receive this repository's secrets"
+  }
+  return undefined
+}
+
+function reportNothing(text: string): void {
+  setOutput('files', 0)
+  setOutput('bytes-saved', 0)
+  setOutput('markdown', '')
+  appendSummary(`### Bitinz image compression\n\n${text}`)
+}
+
 function git(workspace: string, ...args: string[]): string {
   return execFileSync('git', ['-C', workspace, ...args], { encoding: 'utf8' }).trim()
 }
@@ -96,7 +118,14 @@ function commit(workspace: string, files: FileReport[], message: string): void {
 
 async function run(): Promise<void> {
   const apiKey = input('api-key')
-  if (!apiKey) throw new Error('The api-key input is required. Add your Bitinz API key as a repository secret and pass it: api-key: ${{ secrets.BITINZ_API_KEY }}')
+  if (!apiKey) {
+    // Without secrets there is nothing to fix in the workflow, so do not fail.
+    const reason = withoutSecrets()
+    if (!reason) throw new Error('The api-key input is required. Add your Bitinz API key as a repository secret and pass it: api-key: ${{ secrets.BITINZ_API_KEY }}')
+    log.notice(`Skipped: ${reason}, so there is no API key. No images were compressed.`)
+    reportNothing(`Skipped: ${reason}, so there is no API key.`)
+    return
+  }
   log.mask(apiKey)
   const level = input('level') as Level | ''
   if (level && !['fast', 'default', 'best'].includes(level)) throw new Error('level must be fast, default or best')
@@ -109,10 +138,7 @@ async function run(): Promise<void> {
   const files = listed.filter(path => IMAGE.test(path) && wanted(path) && !ignored(path) && existsSync(join(workspace, path)) && statSync(join(workspace, path)).isFile())
   log.info(`${files.length} image${files.length === 1 ? '' : 's'} to compress (${scope}).`)
   if (!files.length) {
-    setOutput('files', 0)
-    setOutput('bytes-saved', 0)
-    setOutput('markdown', '')
-    appendSummary(`### Bitinz image compression\n\nNo images to compress (${scope}).`)
+    reportNothing(`No images to compress (${scope}).`)
     return
   }
 
