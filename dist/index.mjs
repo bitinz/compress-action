@@ -5,15 +5,15 @@ import { execFileSync } from "node:child_process";
 import { existsSync as existsSync2, readdirSync, statSync } from "node:fs";
 import { join as join2, relative as relative2, sep } from "node:path";
 
-// ../bitinz-js/dist/client.js
+// node_modules/bitinz/dist/client.js
 import { openAsBlob } from "node:fs";
 import { basename } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
-// ../bitinz-js/dist/version.js
+// node_modules/bitinz/dist/version.js
 var VERSION = "1.0.0";
 
-// ../bitinz-js/dist/client.js
+// node_modules/bitinz/dist/client.js
 var BitinzError = class extends Error {
   status;
   code;
@@ -204,11 +204,11 @@ var Bitinz = class {
   }
 };
 
-// ../bitinz-js/dist/batch.js
+// node_modules/bitinz/dist/batch.js
 import { copyFile, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname as dirname2 } from "node:path";
 
-// ../bitinz-js/dist/files.js
+// node_modules/bitinz/dist/files.js
 import { basename as basename2, dirname, extname, join, relative, resolve } from "node:path";
 var CONVERTIBLE = [".png", ".jpg", ".jpeg"];
 var OUTPUT_DIR = "bitinz-compressed";
@@ -225,7 +225,7 @@ function planOutputs(files, { outDir = OUTPUT_DIR, inPlace = false, webp = false
   return new Map(files.map((file, i) => [file.path, counts.get(first[i]) > 1 ? target(file, (name) => `${name}.webp`) : first[i]]));
 }
 
-// ../bitinz-js/dist/batch.js
+// node_modules/bitinz/dist/batch.js
 async function writeAtomic(path, data) {
   await mkdir(dirname2(path), { recursive: true });
   const temp = `${path}.${process.pid}.${Date.now()}.tmp`;
@@ -301,7 +301,7 @@ async function compressFiles(client, files, options = {}) {
   return report;
 }
 
-// ../bitinz-js/dist/format.js
+// node_modules/bitinz/dist/format.js
 function formatBytes(bytes) {
   if (bytes < 1024)
     return `${bytes} B`;

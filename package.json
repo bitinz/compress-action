@@ -11,7 +11,7 @@
     "test": "npm run typecheck && npm run build && node --test --test-concurrency=1 test/*.test.mjs"
   },
   "dependencies": {
-    "bitinz": "file:../bitinz-js"
+    "bitinz": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
